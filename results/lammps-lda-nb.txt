@@ -1,0 +1,52 @@
+
+lammps
+
+Topic 0:
+added user changes update code documentation omp docs package styles
+Topic 1:
+files version update lib install library avoid src kim manual
+Topic 2:
+merge pull request akohlmey fixes small lammps collected user updates
+Topic 3:
+kokkos pair fixing error issue style cuda memory adding issues
+Topic 4:
+neighbor list new cleanup whitespace reference gpu remove updated cpp
+Topic 5:
+user branch merge dpd master use remove lammps patch com
+Topic 6:
+example atom style compute change lammps data fix include make
+Topic 7:
+fix doc bug variable stanmoore1 update colvars txt multiple name
+Topic 8:
+svn lammps git icms a41b 4ea7 trunk 209d697bcdaa c512 edu
+Topic 9:
+add fix correct support file typo cmake python missing command
+
+topic_id  buggy
+0         0.0      1794
+          1.0        29
+1         0.0       605
+          1.0        24
+2         0.0      1191
+          1.0        20
+3         0.0       660
+          1.0        94
+4         0.0       740
+          1.0        27
+5         0.0       804
+          1.0        22
+6         0.0       447
+          1.0        24
+7         0.0       191
+          1.0        19
+8         0.0      3223
+          1.0         1
+9         0.0       566
+          1.0        29
+
+for 3
+accuracy 0.798941798941799
+precision 0.15
+recall 0.125
+f1 0.13636363636363635
+148 17 21 3

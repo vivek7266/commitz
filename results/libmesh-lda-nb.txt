@@ -1,0 +1,59 @@
+libmesh
+
+Topic 0:
+update adding updated citations elements traffic parallelmesh dependencies print updating
+Topic 1:
+fix fixed bug disable error patch output ignore comment implementation
+Topic 2:
+use changed default examples instead old example method api type
+Topic 3:
+added change function also documentation order rboomit element elements call
+Topic 4:
+add class test run functions system tests new configure option
+Topic 5:
+make mesh files elem parallel code deprecated node work refinement
+Topic 6:
+remove non removed bootstrap bugfix variable avoid vector assert return
+Topic 7:
+fixes enable support complex warnings version gcc compiler automake number
+Topic 8:
+merge request pull changes roystgnr jwpeterson branch need warning petsc
+Topic 9:
+libmesh include new file const added refactor header std use
+
+topic_id  buggy
+0         0.0      1834
+          1.0        61
+1         0.0       958
+          1.0       514
+2         0.0       784
+          1.0        20
+3         0.0       949
+          1.0        20
+4         0.0       813
+          1.0        23
+5         0.0       621
+          1.0        30
+6         0.0       413
+          1.0        62
+7         0.0       250
+          1.0        90
+8         0.0       841
+          1.0         3
+9         0.0       447
+          1.0        12
+
+
+for 1:
+accuracy 0.6739130434782609
+precision 0.53125
+recall 0.53125
+f1 0.53125
+180 60 60 68
+
+for 6:
+accuracy 0.7815126050420168
+precision 0.25
+recall 0.3125
+f1 0.2777777777777778
+88 15 11 5

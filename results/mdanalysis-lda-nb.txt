@@ -1,0 +1,58 @@
+mdanalysis
+
+Topic 0:
+fixes doc issue minor trr xtc lib improvements rest updates
+Topic 1:
+version updated release documentation changed bumped number regenerated changelog tpr
+Topic 2:
+tests added fix issue topology test fixed files unit file
+Topic 3:
+docs analysis added regenerated online updated html sphinx top hole
+Topic 4:
+test atomgroup added fixed new docs case atom universe atoms
+Topic 5:
+fixed pytest selection issue bug pdb selections based atoms warnings
+Topic 6:
+changelog update com google updated code added github https remove
+Topic 7:
+style add analysis timestep use coordinates writer trajectory dcd pdb
+Topic 8:
+merge develop mdanalysis pull request branch issue feature merged hbonds
+Topic 9:
+mdanalysis code removed distances corresponds distance use module visualization matrix
+
+topic_id  buggy
+0         0.0      760
+          1.0      139
+1         0.0      436
+          1.0       24
+2         0.0      691
+          1.0      215
+3         0.0      354
+          1.0       15
+4         0.0      249
+          1.0       36
+5         0.0      171
+          1.0       42
+6         0.0      166
+          1.0        5
+7         0.0      209
+          1.0        9
+8         0.0      558
+          1.0        3
+9         0.0      167
+          1.0       26
+
+for 0
+accuracy 0.7822222222222223
+precision 0.23076923076923078
+recall 0.17142857142857143
+f1 0.19672131147540986
+170 20 29 6
+
+for 2:
+accuracy 0.6960352422907489
+precision 0.32558139534883723
+recall 0.25925925925925924
+f1 0.288659793814433
+144 29 40 14
