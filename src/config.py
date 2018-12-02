@@ -1,8 +1,9 @@
 class VectorizerConfig:
-    NUM_FEATURES = 20
+    NUM_FEATURES = 100
 
 
-BUGGY_KEYWORDS = ["bug", "fix", "wrong", "error", "fail", "problem", "patch"]
+class MetaConfig:
+    BUGGY_KEYWORDS = ["bug", "fix", "wrong", "error", "fail", "problem", "patch"]
 
 
 class LdaConfig:
@@ -13,3 +14,7 @@ class LdaConfig:
 
 class Metrics:
     F_BETA_BETA_VALUE = 2
+
+
+class SvmConfig:
+    C_VALUE = 100
