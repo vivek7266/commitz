@@ -116,6 +116,10 @@ def get_topic_details(model, feature_names, topic_indices, topic_word_prob, feat
     return topic_indices, topic_word_prob, feature_names_set
 
 
+def keyword_buggy(tokens):
+    return 1 if any(token in MetaConfig.BUGGY_KEYWORDS for token in tokens) else 0
+
+
 def get_topic_top_words(model, feature_names, no_top_words=LdaConfig.NUM_TOP_WORDS):
     if str(model) in model_top_map_cache:
         return model_top_map_cache[str(model)]
@@ -169,10 +173,14 @@ def doc_word_mapping(words, topic0, topic1, feature_names_list, topic0_word_prob
         #     idx = -1 * MetaConfig.BUGGY_KEYWORDS.index(w) + 1
         #     weighted_words[idx] = count * 1
         prob = 0
-        if is_max_0 and w in topic0_word_prob_map:
+        if w in topic0_word_prob_map:
             prob += count * topic0_word_prob_map[w]
-        if not is_max_0 and w in topic1_word_prob_map:
+        if w in topic1_word_prob_map:
             prob += count * topic1_word_prob_map[w]
+        # if is_max_0 and w in topic0_word_prob_map:
+        #     prob += count * topic0_word_prob_map[w]
+        # if not is_max_0 and w in topic1_word_prob_map:
+        #     prob += count * topic1_word_prob_map[w]
         weighted_words[idx] = prob
     return weighted_words, is_doc_buggy_lda
 
@@ -371,9 +379,10 @@ def commitz_classifier(final_df, X_vectorized, mixmatch):
 
     # Cs = [0.1, 10, 50, 100, 200, 400, 1000]
     c = 50
-    # clf = train_with_linear_svm(X_train, y_train, c)
-    clf = train_with_random_forest(X_train, y_train)
+    clf = train_with_linear_svm(X_train, y_train, c)
+    # clf = train_with_random_forest(X_train, y_train)
     # clf = train_with_voting_classifier(X_train, y_train)
+    # clf = train_with_multinomial_nb(X_train, y_train)
     pred_y = clf.predict(X_test)
     acc_clf, prec_clf, rec_clf, f1_clf, f2_clf = get_cm_metrics(y_test, pred_y, "validation set")
     # print("c and f1 measure", c, f1_clf)
@@ -436,9 +445,9 @@ def bugzy_main(num_features=VectorizerConfig.NUM_FEATURES, num_topics=LdaConfig.
         test_df = transform_df(processed_test_df, lda, feature_names, num_top_words)
         y_test_true = test_df['buggy']
 
-        # test LDA
-        y_lda = final_df['buggy_atlda']
-        acc_lda, prec_lda, rec_lda, f1_lda, f2_lda = get_cm_metrics(y_test_true, y_lda, "LDA")
+        # # test LDA
+        # y_lda = final_df['buggy_atlda']
+        # acc_lda, prec_lda, rec_lda, f1_lda, f2_lda = get_cm_metrics(y_test_true, y_lda, "LDA")
 
         X_test_raw = test_df['word_prob'].values.tolist()
         X_test_raw = np.asarray(X_test_raw)
@@ -544,6 +553,6 @@ def driver_main(optimization=False, baseline=False):
 
 if __name__ == '__main__':
     # driver_main(optimization=False, baseline=False)
-    final_metrics = sig_test(n_iter=50, baseline=False)
+    final_metrics = sig_test(n_iter=10, baseline=False)
     print("\n Final mean metrics:")
     print(final_metrics)
