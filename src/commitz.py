@@ -519,7 +519,6 @@ def sig_test(n_iter=100, baseline=False):
                 sum_metrics[k] = np.asarray(v)
             else:
                 sum_metrics[k] = np.add(sum_metrics[k], np.asarray(v))
-        #     print(sum_metrics)
         mean_metrics = {}
         for k, v in sum_metrics.items():
             mean_metrics[k] = np.asarray(v) / (i + 1)
