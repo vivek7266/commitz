@@ -12,11 +12,15 @@ from nltk.stem import WordNetLemmatizer
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 
-corrective_seed = {"fix", "bug", "problem"}
-adaptive_seed = {"new", "change", "patch"}
-perfective_seed = {"style", "move", "removal"}
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+
+from src.config import Metrics
+
+corrective_seed = {"fix", "bug", "problem", "incorrect", "correct", "error", "fixup", "fail"}
+adaptive_seed = {"new", "change", "patch", "add", "modify", "update"}
+perfective_seed = {"style", "move", "removal", "cleanup", "unneeded", "rework"}
 
 mapper = lambda word_list: 0 if any(word in corrective_seed for word in word_list) else 1 if any(
     word in adaptive_seed for word in word_list) else 2 if any(
@@ -50,12 +54,35 @@ stopset = {"the"}
 data_path = "/Users/saurabh/Downloads/ncsu/study/thesis/project/data/"
 
 
+def get_cm_metrics(y_true, y_test, key="unknown"):
+    tn, fp, fn, tp = confusion_matrix(y_true, y_test).ravel()
+    acc = (tp + tn) / (tn + fp + fn + tp)
+    prec = tp / (tp + fp)
+    rec = tp / (tp + fn)
+    f1 = 2 * prec * rec / (prec + rec)
+    beta = Metrics.F_BETA_BETA_VALUE
+    f2 = (1 + np.power(beta, 2)) * prec * rec / (np.power(beta, 2) * prec + rec)
+    print("What am I testing for: {}".format(key))
+    print("accuracy", acc)
+    print("precision", prec)
+    print("recall", rec)
+    print("f1", f1)
+    print("f2", f2)
+    print(tn, fp, fn, tp)
+    print("\n\n")
+    return acc, prec, rec, f1, f2
+
+
 def mauckza(df):
     df["m_class"] = df["msg"].apply(mapper)
     count = df.groupby("m_class").count()
     size = df.shape[0]
     print(count)
     print(size)
+    df["mockus"] = df["m_class"].apply(lambda c: 1 if c == 0 else 0)
+    print(df.head(10))
+    print(confusion_matrix(df["buggy"], df["mockus"]))
+    get_cm_metrics(df["buggy"], df["mockus"], "mockus")
 
 
 def get_file_names(projects):
@@ -93,9 +120,10 @@ def pre_process_text_dataframe(raw_df):
 
 
 def main():
-    # project_names = [['abinit'], ['libmesh'], ['mdanalysis']]
-    project_names = [['abinit']]
+    project_names = [['abinit'], ['libmesh'], ['mdanalysis']]
+    # project_names = [['abinit']]
     for idx, p in enumerate(project_names):
+        print("Playing with {}".format(p))
         raw_df = pre_process_text_dataframe(get_raw_df(p))
         train_df, test_df = train_test_split(raw_df, test_size=0.2)
         mauckza(train_df)
