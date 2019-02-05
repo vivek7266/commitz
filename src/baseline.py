@@ -22,9 +22,29 @@ corrective_seed = {"fix", "bug", "problem", "incorrect", "correct", "error", "fi
 adaptive_seed = {"new", "change", "patch", "add", "modify", "update"}
 perfective_seed = {"style", "move", "removal", "cleanup", "unneeded", "rework"}
 
-mapper = lambda word_list: 0 if any(word in corrective_seed for word in word_list) else 1 if any(
-    word in adaptive_seed for word in word_list) else 2 if any(
-    word in perfective_seed for word in word_list) else -1
+mauckza_corrective_seed = {'active', 'against', 'already', 'bad', 'block', 'bug', 'build', 'call', 'case', 'catch',
+                           'cause', 'character', 'compile', 'correctly', 'create', 'different', 'dump', 'error',
+                           'except', 'exist', 'explicitly', 'fail', 'failure', 'fast', 'fix', 'format', 'good', 'hack',
+                           'hard', 'help', 'init', 'instead', 'introduce', 'issue', 'lock', 'log', 'logic', 'look',
+                           'merge', 'miss', 'null', 'oops', 'operation', 'operations', 'pass', 'previous', 'previously',
+                           'probably', 'problem', 'properly', 'random', 'recent', 'request', 'reset', 'review', 'run',
+                           'safe', 'set', 'similar', 'simplify', 'special', 'test', 'think', 'try', 'turn', 'valid',
+                           'wait', 'warn', 'warning', 'wrong'}
+mauckza_adaptive_seed = {'active', 'add', 'additional', 'against', 'already', 'appropriate', 'available', 'bad',
+                         'behavior', 'block', 'build', 'call', 'case', 'catch', 'change', 'character', 'compatibility',
+                         'compile', 'config', 'configuration', 'context', 'correctly', 'create', 'currently', 'default',
+                         'different', 'documentation', 'dump', 'easier', 'except', 'exist', 'explicitly', 'fail',
+                         'fast', 'feature', 'format', 'future', 'good', 'hack', 'hard', 'header', 'help', 'include',
+                         'information', 'init', 'inline', 'install', 'instead', 'internal', 'introduce', 'issue',
+                         'lock', 'log', 'logic', 'look', 'merge', 'method', 'necessary', 'new ', 'old', 'operation',
+                         'operations', 'pass', 'patch', 'previous', 'previously', 'probably', 'properly',
+                         'protocol provide', 'random', 'recent', 'release', 'replace ,request', 'require', 'reset',
+                         'review', 'run', 'safe', 'security', 'set', 'similar', 'simple', 'simplify', 'special',
+                         'structure', 'switch', 'test', 'text', 'think', 'trunk', 'try', 'turn', 'useful', 'user',
+                         'valid', 'version', 'wait'}
+mauckza_perfective_seed = {'cleanup', 'consistent', 'declaration', 'definition', 'header', 'include', 'inline', 'move',
+                           'prototype', 'removal', 'static', 'style', 'unused', 'variable', 'warning', 'whitespace'}
+mauckza_blacklist_seed = {'cvs2svn', 'cvs', 'svn'}
 
 """
 1. Classify the commit using the “seed” dictionary
@@ -44,6 +64,37 @@ to both classes with a weight of 1 and remove it from the test set
 8. If neither 6 or 7 are true, remove the word from the test set and do not add
 it to the dictionary
 9. Go to Step 2
+
+
+Corrective: active, against, already, bad, block, bug, build, call, case, catch,
+cause(2), character, compile, correctly, create, different, dump, error(2), except,
+exist, explicitly, fail, failure(2), fast, fix(2), format, good, hack, hard,
+help, init, instead, introduce, issue, lock, log, logic, look, merge, miss(2),
+null(2), oops(2), operation, operations, pass, previous, previously, probably,
+problem, properly, random, recent, request, reset, review, run, safe, set, similar,
+simplify, special, test, think, try, turn, valid, wait, warn(2), warning,
+wrong(2)
+
+Adaptive: active, add(2), additional(2), against, already, appropriate(2),
+available(2), bad, behavior, block, build, call, case, catch, change(2), character,
+compatibility(2), compile, config(2), configuration(2), context(2), correctly,
+create, currently(2), default(2), different, documentation(2), dump,
+easier(2), except, exist, explicitly, fail, fast, feature(2), format, future(2),
+good, hack, hard, header, help, include, information(2), init, inline, install(2),
+instead, internal(2), introduce, issue, lock, log, logic, look, merge, method(2),
+necessary(2), new (2), old(2), operation, operations, pass, patch(2), previous,
+previously, probably, properly, protocol(2) provide(2), random, recent,
+release(2), replace(2) ,request, require(2), reset, review, run, safe, security(2),
+set, similar, simple(2), simplify, special, structure(2), switch(2), test, text(2),
+think, trunk(2), try, turn, useful(2), user(2), valid, version(2), wait
+
+Perfective: cleanup(2), consistent(2), declaration(2), definition(2), header, include,
+inline, move(2), prototype(2), removal(2), static(2), style(2), unused(2),
+variable(2), warning, whitespace(2)
+
+Blacklist: cvs2svn, cvs, svn
+
+
 """
 
 lemmatizer = WordNetLemmatizer()
@@ -52,6 +103,15 @@ rt = RegexpTokenizer(r'[^\W_]+|[^\W_\s]+')
 stopset = {"the"}
 
 data_path = "/Users/saurabh/Downloads/ncsu/study/thesis/project/data/"
+
+mapper = lambda word_list: 0 if any(word in corrective_seed for word in word_list) else 1 if any(
+    word in adaptive_seed for word in word_list) else 2 if any(
+    word in perfective_seed for word in word_list) else -1
+
+mauckza_mapper = lambda word_list: 0 if any(word in mauckza_corrective_seed for word in word_list) else 1 if any(
+    word in mauckza_adaptive_seed for word in word_list) else 2 if any(
+    word in mauckza_perfective_seed for word in word_list) else 3 if any(
+    word in mauckza_blacklist_seed for word in word_list) else -1
 
 
 def get_cm_metrics(y_true, y_test, key="unknown"):
@@ -73,16 +133,15 @@ def get_cm_metrics(y_true, y_test, key="unknown"):
     return acc, prec, rec, f1, f2
 
 
-def mauckza(df):
-    df["m_class"] = df["msg"].apply(mapper)
-    count = df.groupby("m_class").count()
-    size = df.shape[0]
-    print(count)
-    print(size)
-    df["mockus"] = df["m_class"].apply(lambda c: 1 if c == 0 else 0)
-    print(df.head(10))
+def baseline(df):
+    df["mockus_class"] = df["msg"].apply(mapper)
+    df["mauckza_class"] = df["msg"].apply(mauckza_mapper)
+    df["mockus"] = df["mockus_class"].apply(lambda c: 1 if c == 0 else 0)
+    df["mauckza"] = df["mauckza_class"].apply(lambda c: 1 if c == 0 else 0)
     print(confusion_matrix(df["buggy"], df["mockus"]))
     get_cm_metrics(df["buggy"], df["mockus"], "mockus")
+    print(confusion_matrix(df["buggy"], df["mauckza"]))
+    get_cm_metrics(df["buggy"], df["mauckza"], "mauckza")
 
 
 def get_file_names(projects):
@@ -126,7 +185,7 @@ def main():
         print("Playing with {}".format(p))
         raw_df = pre_process_text_dataframe(get_raw_df(p))
         train_df, test_df = train_test_split(raw_df, test_size=0.2)
-        mauckza(train_df)
+        baseline(train_df)
 
 
 if __name__ == '__main__':
