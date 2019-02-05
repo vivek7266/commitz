@@ -167,15 +167,11 @@ def get_raw_df(projects):
 
 
 def pre_process_text_dataframe(raw_df):
-    raw_df['tknz_msg'] = raw_df['message'] \
-        .apply(rt.tokenize) \
-        .apply(lambda tkns: [lemmatizer.lemmatize(w.lower()) for w in tkns])
-    raw_df['msg'] = raw_df['tknz_msg'] \
-        .apply(lambda tkns: list(filter(lambda word:
-                                        word not in stopset
-                                        and word not in string.punctuation
-                                        and re.match(r'[^\W\d]*$', word)
-                                        and len(word) > 2, tkns)))
+    raw_df['tknz_msg'] = raw_df['message'].apply(rt.tokenize).apply(
+        lambda tkns: [lemmatizer.lemmatize(w.lower()) for w in tkns])
+    raw_df['msg'] = raw_df['tknz_msg'].apply(lambda tkns: list(filter(
+        lambda word: word not in stopset and word not in string.punctuation and re.match(r'[^\W\d]*$', word) and len(
+            word) > 2, tkns)))
     return raw_df
 
 
