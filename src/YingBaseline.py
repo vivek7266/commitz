@@ -34,7 +34,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 
-from src.config import Metrics, VectorizerConfig, LdaConfig
+from config import Metrics, VectorizerConfig, LdaConfig
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)

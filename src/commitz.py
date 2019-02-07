@@ -15,7 +15,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 # import matplotlib.pyplot as plt
-from src.config import LdaConfig, MetaConfig, Metrics, VectorizerConfig, SvmConfig
+from config import LdaConfig, MetaConfig, Metrics, VectorizerConfig, SvmConfig
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)

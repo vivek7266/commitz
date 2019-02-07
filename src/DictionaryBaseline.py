@@ -68,7 +68,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 
-from src.config import Metrics
+from config import Metrics
 
 corrective_seed = {"fix", "bug", "problem", "incorrect", "correct", "error", "fixup", "fail"}
 adaptive_seed = {"new", "change", "patch", "add", "modify", "update"}
