@@ -25,6 +25,7 @@ stemmer = SnowballStemmer(language='english')
 stopset = set(stopwords.words('english'))
 model_top_map_cache = {}
 
+
 def plot_metrices(metrics, img="metrics.png"):
     n_groups = 5
     # create plot

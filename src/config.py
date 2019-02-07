@@ -17,4 +17,4 @@ class Metrics:
 
 
 class SvmConfig:
-    C_VALUE = 100
+    C_VALUE = 10

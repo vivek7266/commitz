@@ -1,21 +1,3 @@
-"""
-Corrective: Bugfix bug cause error failure fix miss null warn wrong bad correct incorrect problem opps
-valid invalid fail bad dump except
-
-Adaptive: Add new create feature function appropriate available change compatibility config configuration text
-current default easier future information internal method necessary old patch protocol provide release replace
-require security simple structure switch context trunk useful user version install introduce faster init
-
-Perfective: Clean cleanup consistent declaration definition documentation move prototype remove static style
-unused variable whitespace header include dead inefficient useless
-
-Use above term lists as signifier documents
-
-Classification: distance between unclassified and signifier document
-
-
-"""
-
 import glob
 import os
 import string
@@ -28,31 +10,17 @@ from nltk.stem import WordNetLemmatizer
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
+from sklearn.svm import SVC
 
-from config import Metrics, VectorizerConfig, LdaConfig
+from config import Metrics, VectorizerConfig, LdaConfig, SvmConfig
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
-
-ying_sig_corrective = {'bugfix', 'bug', 'cause', 'error', 'failure', 'fix', 'miss', 'null', 'warn', 'wrong', 'bad',
-                       'correct', 'incorrect', 'problem', 'opps', 'valid', 'invalid', 'fail', 'bad', 'dump', 'except'}
-ying_sig_adaptive = {'add', 'new', 'create', 'feature', 'function', 'appropriate', 'available', 'change',
-                     'compatibility', 'config', 'configuration', 'text', 'current', 'default', 'easier', 'future',
-                     'information', 'internal', 'method', 'necessary', 'old', 'patch', 'protocol', 'provide', 'release',
-                     'replace', 'require', 'security', 'simple', 'structure', 'switch', 'context', 'trunk', 'useful',
-                     'user', 'version', 'install', 'introduce', 'faster', 'init'}
-ying_sig_perfective = {'clean', 'cleanup', 'consistent', 'declaration', 'definition', 'documentation', 'move',
-                       'prototype', 'remove', 'static', 'style', 'unused', 'variable', 'whitespace', 'header',
-                       'include', 'dead', 'inefficient', 'useless'}
-signifier_df = pd.DataFrame(
-    [' '.join(ying_sig_corrective), ' '.join(ying_sig_adaptive), ' '.join(ying_sig_perfective)],
-    columns=["terms_list"])
-signifier_df['labels'] = ["corrective", "adaptive", "perfective"]
-
 lemmatizer = WordNetLemmatizer()
 rt = RegexpTokenizer(r'[^\W_]+|[^\W_\s]+')
 # stopset = set(stopwords.words('english'))
@@ -98,18 +66,7 @@ def fit_lda(X_tf, num_topics, num_iter):
     return lda
 
 
-def set_lda_topics_in_df(X_tf, lda, no_topics, df, sig_df, len_signifier):
-    lda_x = lda.transform(X_tf)
-    for i in range(no_topics):
-        topic_name = "Topic_{}".format(str(i))
-        data = pd.Series(lda_x[:-len_signifier, i])
-        df[topic_name] = data.values
-        sig_data = pd.Series(lda_x[-len_signifier:, i])
-        sig_df[topic_name] = sig_data.values
-    return df, sig_df
-
-
-def set_lda_topics_in_test_df(X_tf, lda, no_topics, df):
+def set_lda_topics_in_df(X_tf, lda, no_topics, df):
     lda_x = lda.transform(X_tf)
     for i in range(no_topics):
         topic_name = "Topic_{}".format(str(i))
@@ -122,45 +79,6 @@ def get_topic_cols(df):
     rc = re.compile(r'Topic*')
     topic_list = list(filter(rc.search, df.columns))
     return topic_list
-
-
-def similarity(row, sig_data, topic_cols):
-    data = row[topic_cols].values
-    max_dot = -1
-    ret_idx = -1
-    for i in range(sig_data.shape[0]):
-        dot = np.dot(data, sig_data[i])
-        if dot > max_dot:
-            ret_idx = i
-            max_dot = dot
-    return ret_idx
-
-
-def baseline(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics=LdaConfig.NUM_TOPICS,
-             num_iter=LdaConfig.NUM_ITERATIONS):
-    tf_vectorizer = get_tf_vectorizer(num_features)
-
-    # vectorize train dataframe merged with signifier data
-    # print(train_df['msg_str'].shape, signifier_df['terms_list'].shape)
-    X_tf, feature_names = vectorize(np.append(train_df['msg_str'], signifier_df['terms_list'], axis=0), tf_vectorizer)
-    lda = fit_lda(X_tf, num_topics, num_iter)
-    processed_df, processed_sig_df = set_lda_topics_in_df(X_tf, lda, num_topics, train_df, signifier_df,
-                                                          signifier_df.shape[0])
-    # print(processed_df.head(3), processed_sig_df.head(3))
-    topic_cols = get_topic_cols(processed_sig_df)
-    sig_topic_df = processed_sig_df.loc[:, topic_cols]
-    # print(sig_topic_df.head(3))
-    sig_data = sig_topic_df.values
-    processed_df = process_similarity(processed_df, sig_data, topic_cols)
-    get_cm_metrics(processed_df["buggy"], processed_df["pred_class"], key="Training")
-    return tf_vectorizer, topic_cols, processed_df, lda, sig_data
-
-
-def process_similarity(processed_df, sig_data, topic_cols):
-    processed_df["classified"] = processed_df.apply(lambda row: similarity(row, sig_data, topic_cols), axis=1)
-    # print(processed_df[["msg_str", "Topic_0", "Topic_1", "Topic_2", "buggy", "classified"]].head(5))
-    processed_df["pred_class"] = processed_df["classified"].apply(lambda x: 1 if x == 0 else 0)
-    return processed_df
 
 
 def get_file_names(projects):
@@ -194,6 +112,29 @@ def pre_process_text_dataframe(raw_df):
     return raw_df
 
 
+def baseline(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics=LdaConfig.NUM_TOPICS,
+             num_iter=LdaConfig.NUM_ITERATIONS):
+    tf_vectorizer = get_tf_vectorizer(num_features)
+
+    X_tf, feature_names = vectorize(train_df['msg_str'], tf_vectorizer)
+    lda = fit_lda(X_tf, num_topics, num_iter)
+    processed_df = set_lda_topics_in_df(X_tf, lda, num_topics, train_df)
+    topic_cols = get_topic_cols(processed_df)
+    return tf_vectorizer, topic_cols, processed_df, lda
+
+
+def train_with_linear_svm(X_train, y_train, c=SvmConfig.C_VALUE):
+    clf = SVC(C=c, kernel='linear', random_state=9)
+    clf.fit(X_train, y_train)
+    return clf
+
+
+def train_with_random_forest(X_train, y_train):
+    clf = RandomForestClassifier(n_estimators=100, random_state=9)
+    clf.fit(X_train, y_train)
+    return clf
+
+
 def main():
     project_names = [['abinit'], ['libmesh'], ['mdanalysis']]
     # project_names = [['abinit']]
@@ -207,19 +148,20 @@ def main():
         num_topics = LdaConfig.NUM_TOPICS
 
         # Training
-        tf_vectorizer, topic_cols, processed_df, lda, sig_data = baseline(train_df, num_topics=num_topics)
+        tf_vectorizer, topic_cols, processed_df, lda = baseline(train_df, num_topics=num_topics)
+        clf = train_with_random_forest(processed_df[topic_cols].values, processed_df["buggy"].values)
 
         # Testing
         X_tf_test = tf_vectorizer.transform(test_df['msg_str'])
-        processed_test_df = set_lda_topics_in_test_df(X_tf_test, lda, num_topics, test_df)
-        processed_test_df = process_similarity(processed_test_df, sig_data, topic_cols)
+        processed_test_df = set_lda_topics_in_df(X_tf_test, lda, num_topics, test_df)
+        processed_test_df["pred_class"] = clf.predict(processed_test_df[topic_cols].values)
         metrics[project_key] = get_cm_metrics(processed_test_df["buggy"], processed_test_df["pred_class"],
                                               key="Testing")
     return metrics
 
 
 if __name__ == '__main__':
-    f_name = "ying.csv"
+    f_name = "hindle.csv"
     final_mean_metrics = {}
     sum_metrics = {}
     for i in range(20):
