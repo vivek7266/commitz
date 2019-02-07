@@ -49,6 +49,10 @@ ying_sig_adaptive = {'add', 'new', 'create', 'feature', 'function', 'appropriate
 ying_sig_perfective = {'clean', 'cleanup', 'consistent', 'declaration', 'definition', 'documentation', 'move',
                        'prototype', 'remove', 'static', 'style', 'unused', 'variable', 'whitespace', 'header',
                        'include', 'dead', 'inefficient', 'useless'}
+signifier_df = pd.DataFrame(
+    [' '.join(ying_sig_corrective), ' '.join(ying_sig_adaptive), ' '.join(ying_sig_perfective)],
+    columns=["terms_list"])
+signifier_df['labels'] = ["corrective", "adaptive", "perfective"]
 
 lemmatizer = WordNetLemmatizer()
 rt = RegexpTokenizer(r'[^\W_]+|[^\W_\s]+')
@@ -105,12 +109,13 @@ def set_lda_topics_in_df(X_tf, lda, no_topics, df, sig_df, len_signifier):
     return df, sig_df
 
 
-def generate_signifier_docs():
-    signifier_df = pd.DataFrame(
-        [' '.join(ying_sig_corrective), ' '.join(ying_sig_adaptive), ' '.join(ying_sig_perfective)],
-        columns=["terms_list"])
-    signifier_df['labels'] = ["corrective", "adaptive", "perfective"]
-    return signifier_df
+def set_lda_topics_in_test_df(X_tf, lda, no_topics, df):
+    lda_x = lda.transform(X_tf)
+    for i in range(no_topics):
+        topic_name = "Topic_{}".format(str(i))
+        data = pd.Series(lda_x[:, i])
+        df[topic_name] = data.values
+    return df
 
 
 def get_topic_cols(df):
@@ -135,9 +140,6 @@ def baseline(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics=Ld
              num_iter=LdaConfig.NUM_ITERATIONS):
     tf_vectorizer = get_tf_vectorizer(num_features)
 
-    # generate signifier dataframe and vectorize
-    signifier_df = generate_signifier_docs()
-
     # vectorize train dataframe merged with signifier data
     # print(train_df['msg_str'].shape, signifier_df['terms_list'].shape)
     X_tf, feature_names = vectorize(np.append(train_df['msg_str'], signifier_df['terms_list'], axis=0), tf_vectorizer)
@@ -149,10 +151,16 @@ def baseline(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics=Ld
     sig_topic_df = processed_sig_df.loc[:, topic_cols]
     print(sig_topic_df.head(3))
     sig_data = sig_topic_df.values
+    processed_df = process_similarity(processed_df, sig_data, topic_cols)
+    get_cm_metrics(processed_df["buggy"], processed_df["pred_class"], key="Training")
+    return tf_vectorizer, topic_cols, processed_df, lda, sig_data
+
+
+def process_similarity(processed_df, sig_data, topic_cols):
     processed_df["classified"] = processed_df.apply(lambda row: similarity(row, sig_data, topic_cols), axis=1)
     print(processed_df[["msg_str", "Topic_0", "Topic_1", "Topic_2", "buggy", "classified"]].head(5))
     processed_df["pred_class"] = processed_df["classified"].apply(lambda x: 1 if x == 0 else 0)
-    get_cm_metrics(processed_df["buggy"], processed_df["pred_class"], key="training")
+    return processed_df
 
 
 def get_file_names(projects):
@@ -187,13 +195,23 @@ def pre_process_text_dataframe(raw_df):
 
 
 def main():
-    # project_names = [['abinit'], ['libmesh'], ['mdanalysis']]
-    project_names = [['abinit']]
+    project_names = [['abinit'], ['libmesh'], ['mdanalysis']]
+    # project_names = [['abinit']]
     for idx, p in enumerate(project_names):
         print("Playing with {}".format(p))
         raw_df = pre_process_text_dataframe(get_raw_df(p))
         train_df, test_df = train_test_split(raw_df, test_size=0.2)
-        baseline(train_df)
+
+        num_topics = LdaConfig.NUM_TOPICS
+
+        # Training
+        tf_vectorizer, topic_cols, processed_df, lda, sig_data = baseline(train_df, num_topics=num_topics)
+
+        # Testing
+        X_tf_test = tf_vectorizer.transform(test_df['msg_str'])
+        processed_test_df = set_lda_topics_in_test_df(X_tf_test, lda, num_topics, test_df)
+        processed_test_df = process_similarity(processed_test_df, sig_data, topic_cols)
+        get_cm_metrics(processed_test_df["buggy"], processed_test_df["pred_class"], key="Testing")
 
 
 if __name__ == '__main__':

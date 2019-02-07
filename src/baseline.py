@@ -181,7 +181,7 @@ def main():
     for idx, p in enumerate(project_names):
         print("Playing with {}".format(p))
         raw_df = pre_process_text_dataframe(get_raw_df(p))
-        train_df, test_df = train_test_split(raw_df, test_size=0.2)
+        train_df, test_df = train_test_split(raw_df, test_size=0.01)
         baseline(train_df)
 
 
