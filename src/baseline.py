@@ -98,13 +98,6 @@ mauckza_perfective_seed = {'cleanup', 'consistent', 'declaration', 'definition',
                            'prototype', 'removal', 'static', 'style', 'unused', 'variable', 'warning', 'whitespace'}
 mauckza_blacklist_seed = {'cvs2svn', 'cvs', 'svn'}
 
-lemmatizer = WordNetLemmatizer()
-rt = RegexpTokenizer(r'[^\W_]+|[^\W_\s]+')
-# stopset = set(stopwords.words('english'))
-stopset = {"the"}
-
-data_path = "/Users/saurabh/Downloads/ncsu/study/thesis/project/data/"
-
 mapper = lambda word_list: 0 if any(word in corrective_seed for word in word_list) else 1 if any(
     word in adaptive_seed for word in word_list) else 2 if any(
     word in perfective_seed for word in word_list) else -1
@@ -113,6 +106,13 @@ mauckza_mapper = lambda word_list: 0 if any(word in mauckza_corrective_seed for 
     word in mauckza_adaptive_seed for word in word_list) else 2 if any(
     word in mauckza_perfective_seed for word in word_list) else 3 if any(
     word in mauckza_blacklist_seed for word in word_list) else -1
+
+lemmatizer = WordNetLemmatizer()
+rt = RegexpTokenizer(r'[^\W_]+|[^\W_\s]+')
+# stopset = set(stopwords.words('english'))
+stopset = {"the"}
+
+data_path = "/Users/saurabh/Downloads/ncsu/study/thesis/project/data/"
 
 
 def get_cm_metrics(y_true, y_test, key="unknown"):

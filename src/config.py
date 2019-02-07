@@ -7,8 +7,8 @@ class MetaConfig:
 
 
 class LdaConfig:
-    NUM_TOPICS = 2
-    NUM_ITERATIONS = 10
+    NUM_TOPICS = 3
+    NUM_ITERATIONS = 20
     NUM_TOP_WORDS = 10
 
 

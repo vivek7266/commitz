@@ -1,0 +1,3 @@
+bugfix bug cause error failure fix miss null warn wrong bad correct incorrect problem opps valid invalid fail bad dump except
+add new create feature function appropriate available change compatibility config configuration text current default easier future information internal method necessary old patch protocol provide release replace require security simple structure switch context trunk useful user version install introduce faster init
+clean cleanup consistent declaration definition documentation move prototype remove static style unused variable whitespace header include dead inefficient useless
