@@ -24,12 +24,9 @@ pd.set_option('display.width', 1000)
 lemmatizer = WordNetLemmatizer()
 rt = RegexpTokenizer(r'[^\W_]+|[^\W_\s]+')
 # stopset = set(stopwords.words('english'))
-stopset = {"the", "for", "and", "are", "were", "does", "has", "had", "did", "with", "into", "org", "svn", "cvs", "from",
-           "this", "not", "more", "that"}
+stopset = {"the"}
 
 data_path = "/Users/saurabh/Downloads/ncsu/study/thesis/project/data/"
-
-corrective_keys = {"fix", "bug", "problem", "incorrect", "correct", "error", "fixup", "fail"}
 
 
 def get_cm_metrics(y_true, y_test, key="unknown", p=False):
@@ -123,33 +120,19 @@ def baseline(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics=Ld
     lda = fit_lda(X_tf, num_topics, num_iter)
     processed_df = set_lda_topics_in_df(X_tf, lda, num_topics, train_df)
     topic_cols = get_topic_cols(processed_df)
-    return tf_vectorizer, topic_cols, processed_df, lda, feature_names
+    return tf_vectorizer, topic_cols, processed_df, lda
 
 
-def get_topic_top_words(model, feature_names, no_top_words=LdaConfig.NUM_TOP_WORDS):
-    topic_top_words = []
-    for topic_idx, topic in enumerate(model.components_):
-        top_words = [feature_names[i] for i in topic.argsort()[:-no_top_words - 1:-1]]
-        topic_top_words.append(top_words)
-    return topic_top_words
+def train_with_linear_svm(X_train, y_train, c=SvmConfig.C_VALUE):
+    clf = SVC(C=c, kernel='linear', random_state=9)
+    clf.fit(X_train, y_train)
+    return clf
 
 
-def map_topic_to_bugginess(topic_top_words):
-    max_i = 0
-    for i in range(len(topic_top_words)):
-        len_top_i = len(set(topic_top_words[i]) & corrective_keys)
-        if len_top_i > max_i:
-            max_i = i
-    print("Topic_{} is buggy".format(max_i))
-    return max_i
-
-
-def pred_topic_bugginess(row, topic_cols, buggy_index):
-    data = row[topic_cols].values
-    if 2 * data[buggy_index] - np.sum(data) > 0:
-        return 1
-    else:
-        return 0
+def train_with_random_forest(X_train, y_train):
+    clf = RandomForestClassifier(n_estimators=100, random_state=9)
+    clf.fit(X_train, y_train)
+    return clf
 
 
 def main():
@@ -162,20 +145,16 @@ def main():
         raw_df = pre_process_text_dataframe(get_raw_df(p))
         train_df, test_df = train_test_split(raw_df, test_size=0.2)
 
-        num_topics = 2
+        num_topics = LdaConfig.NUM_TOPICS
 
         # Training
-        tf_vectorizer, topic_cols, processed_df, lda, feature_names = baseline(train_df, num_topics=num_topics)
-        topic_top_words = get_topic_top_words(lda, feature_names)
-        print(topic_top_words)
-        buggy_topic = map_topic_to_bugginess(topic_top_words)
+        tf_vectorizer, topic_cols, processed_df, lda = baseline(train_df, num_topics=num_topics)
+        clf = train_with_random_forest(processed_df[topic_cols].values, processed_df["buggy"].values)
 
         # Testing
         X_tf_test = tf_vectorizer.transform(test_df['msg_str'])
         processed_test_df = set_lda_topics_in_df(X_tf_test, lda, num_topics, test_df)
-        processed_test_df["pred_class"] = processed_test_df.apply(
-            lambda x: pred_topic_bugginess(x, topic_cols, buggy_topic), axis=1)
-        print(processed_test_df.head(10))
+        processed_test_df["pred_class"] = clf.predict(processed_test_df[topic_cols].values)
         metrics[project_key] = get_cm_metrics(processed_test_df["buggy"], processed_test_df["pred_class"],
                                               key="Testing")
     return metrics
