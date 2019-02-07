@@ -62,7 +62,7 @@ stopset = {"the"}
 data_path = "/Users/saurabh/Downloads/ncsu/study/thesis/project/data/"
 
 
-def get_cm_metrics(y_true, y_test, key="unknown"):
+def get_cm_metrics(y_true, y_test, key="unknown", p=False):
     tn, fp, fn, tp = confusion_matrix(y_true, y_test).ravel()
     acc = (tp + tn) / (tn + fp + fn + tp)
     prec = tp / (tp + fp)
@@ -70,14 +70,15 @@ def get_cm_metrics(y_true, y_test, key="unknown"):
     f1 = 2 * prec * rec / (prec + rec)
     beta = Metrics.F_BETA_BETA_VALUE
     f2 = (1 + np.power(beta, 2)) * prec * rec / (np.power(beta, 2) * prec + rec)
-    print("What am I testing for: {}".format(key))
-    print("accuracy", acc)
-    print("precision", prec)
-    print("recall", rec)
-    print("f1", f1)
-    print("f2", f2)
-    print(tn, fp, fn, tp)
-    print("\n\n")
+    if p:
+        print("What am I testing for: {}".format(key))
+        print("accuracy", acc)
+        print("precision", prec)
+        print("recall", rec)
+        print("f1", f1)
+        print("f2", f2)
+        print(tn, fp, fn, tp)
+        print("\n\n")
     return acc, prec, rec, f1, f2
 
 
@@ -149,7 +150,7 @@ def baseline(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics=Ld
     # print(processed_df.head(3), processed_sig_df.head(3))
     topic_cols = get_topic_cols(processed_sig_df)
     sig_topic_df = processed_sig_df.loc[:, topic_cols]
-    print(sig_topic_df.head(3))
+    # print(sig_topic_df.head(3))
     sig_data = sig_topic_df.values
     processed_df = process_similarity(processed_df, sig_data, topic_cols)
     get_cm_metrics(processed_df["buggy"], processed_df["pred_class"], key="Training")
@@ -158,7 +159,7 @@ def baseline(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics=Ld
 
 def process_similarity(processed_df, sig_data, topic_cols):
     processed_df["classified"] = processed_df.apply(lambda row: similarity(row, sig_data, topic_cols), axis=1)
-    print(processed_df[["msg_str", "Topic_0", "Topic_1", "Topic_2", "buggy", "classified"]].head(5))
+    # print(processed_df[["msg_str", "Topic_0", "Topic_1", "Topic_2", "buggy", "classified"]].head(5))
     processed_df["pred_class"] = processed_df["classified"].apply(lambda x: 1 if x == 0 else 0)
     return processed_df
 
@@ -197,8 +198,10 @@ def pre_process_text_dataframe(raw_df):
 def main():
     project_names = [['abinit'], ['libmesh'], ['mdanalysis']]
     # project_names = [['abinit']]
+    metrics = {}
     for idx, p in enumerate(project_names):
         print("Playing with {}".format(p))
+        project_key = '+'.join(p)
         raw_df = pre_process_text_dataframe(get_raw_df(p))
         train_df, test_df = train_test_split(raw_df, test_size=0.2)
 
@@ -211,8 +214,31 @@ def main():
         X_tf_test = tf_vectorizer.transform(test_df['msg_str'])
         processed_test_df = set_lda_topics_in_test_df(X_tf_test, lda, num_topics, test_df)
         processed_test_df = process_similarity(processed_test_df, sig_data, topic_cols)
-        get_cm_metrics(processed_test_df["buggy"], processed_test_df["pred_class"], key="Testing")
+        metrics[project_key] = get_cm_metrics(processed_test_df["buggy"], processed_test_df["pred_class"],
+                                              key="Testing")
+    return metrics
 
 
 if __name__ == '__main__':
-    main()
+    f_name = "ying.csv"
+    final_mean_metrics = {}
+    sum_metrics = {}
+    for i in range(20):
+        metrics_map = main()
+        for project_key, metrics in metrics_map.items():
+            if project_key not in sum_metrics:
+                sum_metrics[project_key] = np.asarray(metrics)
+            else:
+                sum_metrics[project_key] = np.add(sum_metrics[project_key], np.asarray(metrics))
+
+        # Print running mean metrics
+        mean_metrics = {}
+        for key, sum_till in sum_metrics.items():
+            mean_metrics[key] = np.asarray(sum_till) / (i + 1)
+        print("\n Running mean metrics: {}".format(i))
+        print(mean_metrics)
+        final_mean_metrics = mean_metrics
+    metrics_df = pd.DataFrame.from_dict(final_mean_metrics, orient='index',
+                                        columns=["accuracy", "precision", "recall", "f1", "f2"])
+    metrics_df.to_csv("{}".format(f_name), index=True, header=True, index_label="project")
+    print(metrics_df.head(10))
