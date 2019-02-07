@@ -14,7 +14,7 @@ from sklearn.ensemble import VotingClassifier, RandomForestClassifier
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from config import LdaConfig, MetaConfig, Metrics, VectorizerConfig, SvmConfig
 
 pd.set_option('display.max_columns', 500)
@@ -24,9 +24,6 @@ lemmatizer = WordNetLemmatizer()
 stemmer = SnowballStemmer(language='english')
 stopset = set(stopwords.words('english'))
 model_top_map_cache = {}
-
-
-# Andreas Mauckuza
 
 def plot_metrices(metrics, img="metrics.png"):
     n_groups = 5
