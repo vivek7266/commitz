@@ -175,7 +175,6 @@ def main():
         processed_test_df = set_lda_topics_in_df(X_tf_test, lda, num_topics, test_df)
         processed_test_df["pred_class"] = processed_test_df.apply(
             lambda x: pred_topic_bugginess(x, topic_cols, buggy_topic), axis=1)
-        print(processed_test_df.head(10))
         metrics[project_key] = get_cm_metrics(processed_test_df["buggy"], processed_test_df["pred_class"],
                                               key="Testing")
     return metrics
