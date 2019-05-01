@@ -1,5 +1,5 @@
 class VectorizerConfig:
-    NUM_FEATURES = 100
+    NUM_FEATURES = 1000
 
 
 class MetaConfig:
@@ -7,9 +7,10 @@ class MetaConfig:
 
 
 class LdaConfig:
-    NUM_TOPICS = 3
+    NUM_TOPICS = 2
     NUM_ITERATIONS = 20
     NUM_TOP_WORDS = 10
+    NUM_TOP_WORDS_LARGE = 100
 
 
 class Metrics:
