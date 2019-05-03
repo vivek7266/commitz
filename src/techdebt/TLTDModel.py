@@ -215,10 +215,11 @@ def fit_lda(X_tf, num_topics, num_iter):
     return lda
 
 
-def get_tf_vectorizer(num_features):
-    # tf_vectorizer = CountVectorizer(max_features=num_features)
-    tf_vectorizer = TfidfVectorizer(max_features=num_features)
-    return tf_vectorizer
+def get_vectorizer(num_features):
+    # vectorizer = CountVectorizer(max_features=num_features)
+    # vectorizer = TfidfVectorizer(max_features=num_features)
+    vectorizer = TfidfVectorizer(ngram_range=(1, 3), max_df=0.95, min_df=2, max_features=num_features)
+    return vectorizer
 
 
 def vectorize(corpus, vectorizer):
@@ -228,7 +229,7 @@ def vectorize(corpus, vectorizer):
 
 
 def set_label(raw_df):
-    raw_df["label_code"] = raw_df["label"].apply(lambda val: 1. if "DEFECT" == str(val.strip()) else 0.)
+    raw_df["label_code"] = raw_df["label"].apply(lambda val: 0. if "WITHOUT_CLASSIFICATION" == str(val.strip()) else 1.)
     # label_counts = raw_df.groupby("label")["idx"].count()
     label_code_counts = raw_df.groupby("label_code")["idx"].count()
     print(label_code_counts)
@@ -263,7 +264,7 @@ def pre_process_text_dataframe(raw_df):
 
 def ingredients(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics=LdaConfig.NUM_TOPICS,
                 num_iter=LdaConfig.NUM_ITERATIONS):
-    tf_vectorizer = get_tf_vectorizer(num_features)
+    tf_vectorizer = get_vectorizer(num_features)
 
     X_tf, feature_names = vectorize(train_df['content'], tf_vectorizer)
     lda = fit_lda(X_tf, num_topics, num_iter)
@@ -275,12 +276,13 @@ def ingredients(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics
 project_df_map = {}
 
 
-def sto_lang_model(fname):
+def sto_lang_model(exp_class):
     metrics = {}
-    class_key = "td"
+    class_key = exp_class
 
     if str(class_key) not in project_df_map:
-        raw_df = pre_process_text_dataframe(get_raw_df(fname))
+        raw_df = pre_process_text_dataframe(get_raw_df(td_datapath))
+        raw_df = raw_df[raw_df['project_id'] == class_key]
         project_df_map[str(class_key)] = raw_df
     else:
         raw_df = project_df_map[str(class_key)]
@@ -291,8 +293,8 @@ def sto_lang_model(fname):
     pos_size = train_df_pos.shape[0]
     pos_all = train_df.shape[0]
 
-    if pos_size/pos_all < 0.1:
-        train_df_neg = train_df[train_df["label_code"] == 0.].sample(frac=5*pos_size/(pos_all - pos_size))
+    if pos_size / pos_all < 0.1:
+        train_df_neg = train_df[train_df["label_code"] == 0.].sample(frac=10 * pos_size / (pos_all - pos_size))
         train_df = pd.concat([train_df_pos, train_df_neg]).sample(frac=1)
 
     # Training
@@ -313,31 +315,30 @@ def sto_lang_model(fname):
     return metrics
 
 
-def main():
-    return sto_lang_model(td_datapath)
+def main(exp_class):
+    return sto_lang_model(exp_class)
 
 
 if __name__ == '__main__':
 
     f_name = "tltdmodel.csv"
-    final_mean_metrics = {}
     sum_metrics = {}
-    for i in range(20):
-        metrics_map = main()
-        for project_key, metrics in metrics_map.items():
-            if project_key not in sum_metrics:
-                sum_metrics[project_key] = np.asarray(metrics)
+    mean_metrics = {}
+    exp_classes = ["apache-ant-1.7.0", "apache-jmeter-2.10", "argouml", "columba-1.4-src", "emf-2.4.1",
+                   "hibernate-distribution-3.3.2.GA", "jEdit-4.2", "jfreechart-1.0.19", "jruby-1.4.0", "sql12"]
+    for c in exp_classes:
+        for i in range(20):
+            metrics_map = main(c)
+            if c not in sum_metrics:
+                sum_metrics[c] = np.asarray(metrics_map[c])
             else:
-                sum_metrics[project_key] = np.add(sum_metrics[project_key], np.asarray(metrics))
+                sum_metrics[c] = np.add(sum_metrics[c], np.asarray(metrics_map[c]))
 
-        # Print running mean metrics
-        mean_metrics = {}
-        for key, sum_till in sum_metrics.items():
-            mean_metrics[key] = np.asarray(sum_till) / (i + 1)
-        print("\n Running mean metrics: {}".format(i))
-        print(mean_metrics)
-        final_mean_metrics = mean_metrics
-    metrics_df = pd.DataFrame.from_dict(final_mean_metrics, orient='index',
+            # Print running mean metrics
+            mean_metrics[c] = np.asarray(sum_metrics[c]) / (i + 1)
+            print("\n Running mean metrics: {}".format(i))
+            print(mean_metrics)
+    metrics_df = pd.DataFrame.from_dict(mean_metrics, orient='index',
                                         columns=["accuracy", "precision", "recall", "f1", "f2"])
-    metrics_df.to_csv("{}".format(f_name), index=True, header=True, index_label="project")
     print(metrics_df.head(10))
+    metrics_df.to_csv("{}".format(f_name), index=True, header=True, index_label="project")

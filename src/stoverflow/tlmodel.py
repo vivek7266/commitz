@@ -27,6 +27,19 @@ fnames = []
 for i in range(0, num_classes):
     fnames.append("{}SE{}.txt".format(sto_datapath, str(i)))
 
+raw_dfs = []
+for nc in name_classes:
+    raw_fname = "{}{}.txt".format(sto_datapath, nc)
+    raw_df = pd.read_csv(raw_fname, delimiter='>>>', header=None, index_col=None)
+    raw_df.columns = ["content", "tags"]
+    raw_df['label'] = nc
+    raw_dfs.append(raw_df)
+raw_dfs = pd.concat(raw_dfs, ignore_index=True)
+raw_input_df = raw_dfs.drop_duplicates()
+raw_input_df = raw_input_df.dropna().reset_index()
+# print(raw_input_df.sample(10))
+print(raw_input_df.shape)
+
 
 # print(fnames)
 
@@ -132,7 +145,7 @@ def transform_df(raw_df, lda, feature_names, num_top_words):
     #                                feature_names_list), axis=1)
     raw_df['word_prob'] = raw_df.apply(
         lambda x: doc_word_mapping_v2(x['content'], topic0_word_prob_map, topic1_word_prob_map,
-                                   feature_names_list, topic_probs=x['topic_probs']), axis=1)
+                                      feature_names_list, topic_probs=x['topic_probs']), axis=1)
     final_df = raw_df[["word_prob", "label_code"]]
     return final_df, topic_word_prob, feature_names_list
 
@@ -148,7 +161,7 @@ def transform_test_df(raw_df, topic_word_prob, feature_names_list):
     #                                feature_names_list), axis=1)
     raw_df['word_prob'] = raw_df.apply(
         lambda x: doc_word_mapping_v2(x['content'], topic0_word_prob_map, topic1_word_prob_map,
-                                   feature_names_list, topic_probs=x['topic_probs']), axis=1)
+                                      feature_names_list, topic_probs=x['topic_probs']), axis=1)
     final_df = raw_df[["word_prob", "label_code"]]
     return final_df
 
@@ -194,7 +207,7 @@ def start_cooking(final_df):
 
     clf = train_with_random_forest(X_train, y_train)
     y_pred = clf.predict(X_val)
-    get_cm_metrics(y_val, y_pred, "validation set", p=True)
+    get_cm_metrics(y_val, y_pred, "validation set", p=False)
     return clf, scaler
 
 
@@ -230,17 +243,27 @@ def vectorize(corpus, vectorizer):
     return X_transformed, vectorized_feature_names
 
 
-def get_raw_df(fname):
-    raw_df = pd.read_csv(fname, delimiter='>>>', header=None, index_col=None)
-    raw_df.columns = ["content", "label"]
+def get_raw_df(fname=None, cache=True, cache_class=None):
+    if cache:
+        raw_df_class = raw_input_df[raw_input_df['label'] == cache_class]
+        raw_df_non_class = raw_input_df[raw_input_df['label'] != cache_class]
+        pos_size = len(raw_df_class)
+        neg_size = len(raw_df_non_class)
+        # raw_df = raw_df_non_class.sample(frac=10 * pos_size / neg_size, replace=True)
+        raw_df = raw_df_non_class
+        raw_df = pd.concat([raw_df_class, raw_df]).sample(frac=1)
+        raw_df["label"] = raw_df["label"].apply(lambda val: "yes" if cache_class == str(val.strip()) else "no")
+    else:
+        raw_df = pd.read_csv(fname, delimiter='>>>', header=None, index_col=None)
+        raw_df.columns = ["content", "label"]
     raw_df['idx'] = raw_df.index
     raw_df = raw_df.dropna().reset_index()
     raw_df["label"] = raw_df["label"].apply(lambda x: x.strip())
-    raw_df.sample(3)
 
     raw_df["label_code"] = raw_df["label"].apply(lambda val: 1. if "yes" == str(val.strip()) else 0.)
     label_counts = raw_df.groupby("label")["idx"].count()
     label_code_counts = raw_df.groupby("label_code")["idx"].count()
+    print(label_code_counts)
     return raw_df
 
 
@@ -255,67 +278,80 @@ def ingredients(train_df, num_features=VectorizerConfig.NUM_FEATURES, num_topics
     return tf_vectorizer, topic_cols, processed_df, lda, feature_names
 
 
-def sto_lang_model(exp_classes):
+project_df_map = {}
+
+
+def sto_lang_model(exp_class):
+    class_key = exp_class
     metrics = {}
-    for class_key in exp_classes:
-        fname = fnames[class_key]
-        raw_df = get_raw_df(fname)
-        train_df, test_df = train_test_split(raw_df, test_size=0.2)
+    # fname = fnames[class_key]
+    # raw_df = get_raw_df(fname)
 
-        # add all that can be added to train df as label 1
-        train_df_pos = train_df[train_df["label_code"] == 1.]
-        pos_size = train_df_pos.shape[0]
-        pos_all = train_df.shape[0]
+    if str(class_key) not in project_df_map:
+        raw_df = get_raw_df(cache=True, cache_class=class_key)
+        project_df_map[str(class_key)] = raw_df
+    else:
+        raw_df = project_df_map[str(class_key)]
 
-        if pos_size / pos_all < 0.1:
-            train_df_neg = train_df[train_df["label_code"] == 0.].sample(frac=10 * pos_size / (pos_all - pos_size))
-            train_df = pd.concat([train_df_pos, train_df_neg]).sample(frac=1)
+    train_df, test_df = train_test_split(raw_df, test_size=0.2)
 
-        # Training
-        num_topics = LdaConfig.NUM_TOPICS
-        num_top_words = LdaConfig.NUM_TOP_WORDS_LARGE
-        tf_vectorizer, topic_cols, processed_df, lda, feature_names = ingredients(train_df, num_topics=num_topics)
-        final_df, topic_word_prob, feature_names_list = transform_df(processed_df, lda, feature_names, num_top_words)
-        clf, scaler = start_cooking(final_df)
+    # add all that can be added to train df as label 1
+    train_df_pos = train_df[train_df["label_code"] == 1.]
+    pos_size = train_df_pos.shape[0]
+    pos_all = train_df.shape[0]
 
-        # Testing
-        X_tf_test = tf_vectorizer.transform(test_df['content'])
-        processed_test_df = set_lda_topics_in_df(X_tf_test, lda, num_topics, test_df)
-        processed_test_df = transform_test_df(processed_test_df, topic_word_prob, feature_names_list)
-        test_X, test_y = get_x_y(processed_test_df)
-        processed_test_df["pred_class"] = clf.predict(test_X)
-        metrics[class_key] = get_cm_metrics(test_y, processed_test_df["pred_class"],
-                                            key="Testing")
+    if pos_size / pos_all <= 0.5:
+        train_df_neg = train_df[train_df["label_code"] == 0.].sample(frac=2 * pos_size / (pos_all - pos_size),
+                                                                     replace=True)
+        train_df = pd.concat([train_df_pos, train_df_neg]).sample(frac=1)
+
+    label_code_counts = train_df.groupby("label_code")["idx"].count()
+    print("Train", label_code_counts)
+    label_code_counts = test_df.groupby("label_code")["idx"].count()
+    print("Test", label_code_counts)
+
+    # Training
+    num_topics = LdaConfig.NUM_TOPICS
+    num_top_words = LdaConfig.NUM_TOP_WORDS_LARGE
+    tf_vectorizer, topic_cols, processed_df, lda, feature_names = ingredients(train_df, num_topics=num_topics)
+    final_df, topic_word_prob, feature_names_list = transform_df(processed_df, lda, feature_names, num_top_words)
+    clf, scaler = start_cooking(final_df)
+
+    # Testing
+    X_tf_test = tf_vectorizer.transform(test_df['content'])
+    processed_test_df = set_lda_topics_in_df(X_tf_test, lda, num_topics, test_df)
+    processed_test_df = transform_test_df(processed_test_df, topic_word_prob, feature_names_list)
+    test_X, test_y = get_x_y(processed_test_df)
+    processed_test_df["pred_class"] = clf.predict(test_X)
+    metrics[class_key] = get_cm_metrics(test_y, processed_test_df["pred_class"],
+                                        key="Testing", p=True)
     return metrics
 
 
-def main(exp_classes):
-    return sto_lang_model(exp_classes)
+def main(exp_class):
+    return sto_lang_model(exp_class)
 
 
 if __name__ == '__main__':
     f_name = "tlmodel.csv"
     # exp_classes = [i for i in range(1, 10)]
-    exp_classes = [0]
-    print(main(exp_classes))
-    final_mean_metrics = {}
+    # exp_classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    exp_classes = name_classes
+    mean_metrics = {}
     sum_metrics = {}
-    for i in range(20):
-        metrics_map = main(exp_classes)
-        for project_key, metrics in metrics_map.items():
-            if project_key not in sum_metrics:
-                sum_metrics[project_key] = np.asarray(metrics)
+    for c in exp_classes:
+        for i in range(1):
+            metrics_map = main(c)
+            if c not in sum_metrics:
+                sum_metrics[c] = np.asarray(metrics_map[c])
             else:
-                sum_metrics[project_key] = np.add(sum_metrics[project_key], np.asarray(metrics))
+                sum_metrics[c] = np.add(sum_metrics[c], np.asarray(metrics_map[c]))
 
-        # Print running mean metrics
-        mean_metrics = {}
-        for key, sum_till in sum_metrics.items():
-            mean_metrics[key] = np.asarray(sum_till) / (i + 1)
-        print("\n Running mean metrics: {}".format(i))
-        print(mean_metrics)
-        final_mean_metrics = mean_metrics
-    metrics_df = pd.DataFrame.from_dict(final_mean_metrics, orient='index',
+            # Print running mean metrics
+            mean_metrics[c] = np.asarray(sum_metrics[c]) / (i + 1)
+            print("\n Running mean metrics: {}".format(i))
+            print(mean_metrics)
+    metrics_df = pd.DataFrame.from_dict(mean_metrics, orient='index',
                                         columns=["accuracy", "precision", "recall", "f1", "f2"])
-    metrics_df.to_csv("{}".format(f_name), index=True, header=True, index_label="project")
     print(metrics_df.head(10))
+    metrics_df.to_csv("{}".format(f_name), index=True, header=True, index_label="project")
