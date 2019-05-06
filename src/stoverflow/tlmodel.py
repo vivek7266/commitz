@@ -206,6 +206,7 @@ def start_cooking(final_df):
     X_val = scaler.transform(X_val)
 
     clf = train_with_random_forest(X_train, y_train)
+    # clf = train_with_linear_svm(X_train, y_train)
     y_pred = clf.predict(X_val)
     get_cm_metrics(y_val, y_pred, "validation set", p=False)
     return clf, scaler
@@ -333,7 +334,7 @@ def main(exp_class):
 
 
 if __name__ == '__main__':
-    f_name = "tlmodel.csv"
+    f_name = "tmp.csv"
     # exp_classes = [i for i in range(1, 10)]
     # exp_classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     exp_classes = name_classes

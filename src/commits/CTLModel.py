@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
+import glob
+import os
 import string
 from collections import Counter
 
@@ -27,7 +29,7 @@ lemmatizer = WordNetLemmatizer()
 stemmer = SnowballStemmer(language='english')
 stopset = set(stopwords.words('english'))
 
-td_datapath = "/Users/saurabh/Downloads/ncsu/study/thesis/datasets/td_2016.csv"
+c_datapath = "/Users/saurabh/Downloads/ncsu/study/thesis/project/data/data-collection/labeled_commits/human"
 
 
 def visulaize_lda(lda_model, transformed_x, vectorizer):
@@ -193,6 +195,7 @@ def start_cooking(final_df):
 
     clf = train_with_random_forest(X_train, y_train)
     # clf = train_with_linear_svm(X_train, y_train)
+    # Predict for validation set
     # y_pred = clf.predict(X_val)
     # get_cm_metrics(y_val, y_pred, "validation set")
     return clf, scaler
@@ -205,7 +208,7 @@ def train_with_linear_svm(X_train, y_train, c=SvmConfig.C_VALUE):
 
 
 def train_with_random_forest(X_train, y_train):
-    clf = RandomForestClassifier(n_estimators=100, random_state=9)
+    clf = RandomForestClassifier(n_estimators=100, max_depth=100, random_state=9)
     clf.fit(X_train, y_train)
     return clf
 
@@ -230,28 +233,34 @@ def vectorize(corpus, vectorizer):
 
 
 def set_label(raw_df):
-    raw_df["label_code"] = raw_df["label"].apply(lambda val: 0. if "WITHOUT_CLASSIFICATION" == str(val.strip()) else 1.)
+    raw_df["label_code"] = raw_df["buggy"]
     # label_counts = raw_df.groupby("label")["idx"].count()
-    label_code_counts = raw_df.groupby("label_code")["idx"].count()
+    label_code_counts = raw_df.groupby("label_code")["hash"].count()
     print(label_code_counts)
     return raw_df
 
 
-def get_raw_df(fname):
-    raw_df = pd.read_csv(fname)
-    raw_df.columns = ["project_id", "label", "td_content"]
-    raw_df['idx'] = raw_df.index
-    raw_df = raw_df.dropna().reset_index()
-    raw_df["label"] = raw_df["label"].apply(lambda x: x.strip())
+def get_file_names(project):
+    sfname = os.path.join(c_datapath, project)
+    files = glob.glob(os.path.join(sfname, "*.csv"))
+    return files
+
+
+def get_raw_df(exp_class):
+    all_files = get_file_names(exp_class)
+    df_from_each_file = (pd.read_csv(f) for f in all_files)
+    concatenated_df = pd.concat(df_from_each_file, ignore_index=True)
+    df = concatenated_df.drop_duplicates().reset_index()
+    raw_df = df.dropna().reset_index()
     raw_df = set_label(raw_df)
     return raw_df
 
 
 def pre_process_text_dataframe(raw_df):
-    raw_df['tknz_content'] = raw_df['td_content'] \
+    raw_df['content'] = raw_df['message'] \
         .apply(rt.tokenize) \
         .apply(lambda tkns: [lemmatizer.lemmatize(w.lower()) for w in tkns])
-    raw_df['content'] = raw_df['tknz_content'] \
+    raw_df['content'] = raw_df['content'] \
         .apply(lambda tkns: list(filter(lambda word:
                                         word not in stopset
                                         and word not in string.punctuation
@@ -282,12 +291,12 @@ def sto_lang_model(exp_class):
     class_key = exp_class
 
     if str(class_key) not in project_df_map:
-        raw_df = pre_process_text_dataframe(get_raw_df(td_datapath))
-        raw_df = raw_df[raw_df['project_id'] == class_key]
+        raw_df = pre_process_text_dataframe(get_raw_df(exp_class))
         project_df_map[str(class_key)] = raw_df
     else:
         raw_df = project_df_map[str(class_key)]
     train_df, test_df = train_test_split(raw_df, test_size=0.2)
+
 
     # add all that can be added to train df as label 1
     train_df_pos = train_df[train_df["label_code"] == 1.]
@@ -295,7 +304,8 @@ def sto_lang_model(exp_class):
     pos_all = train_df.shape[0]
 
     if pos_size / pos_all <= 0.5:
-        train_df_neg = train_df[train_df["label_code"] == 0.].sample(frac=2 * pos_size / (pos_all - pos_size))
+        train_df_neg = train_df[train_df["label_code"] == 0.].sample(frac=2 * pos_size / (pos_all - pos_size),
+                                                                     replace=True)
         train_df = pd.concat([train_df_pos, train_df_neg]).sample(frac=1)
 
     # Training
@@ -325,8 +335,7 @@ if __name__ == '__main__':
     f_name = "tmp.csv"
     sum_metrics = {}
     mean_metrics = {}
-    exp_classes = ["apache-ant-1.7.0", "apache-jmeter-2.10", "argouml", "columba-1.4-src", "emf-2.4.1",
-                   "hibernate-distribution-3.3.2.GA", "jEdit-4.2", "jfreechart-1.0.19", "jruby-1.4.0", "sql12"]
+    exp_classes = ['abinit', 'libmesh', 'mdanalysis', 'lammps']
     for c in exp_classes:
         for i in range(3):
             metrics_map = main(c)
