@@ -335,10 +335,14 @@ if __name__ == '__main__':
     f_name = "tmp.csv"
     sum_metrics = {}
     mean_metrics = {}
+    run_metrics = {}
     exp_classes = ['abinit', 'libmesh', 'mdanalysis', 'lammps']
     for c in exp_classes:
-        for i in range(3):
+        for i in range(20):
             metrics_map = main(c)
+            if c not in run_metrics:
+                run_metrics[c] = []
+            run_metrics[c].append(metrics_map[c])
             if c not in sum_metrics:
                 sum_metrics[c] = np.asarray(metrics_map[c])
             else:
@@ -351,4 +355,6 @@ if __name__ == '__main__':
     metrics_df = pd.DataFrame.from_dict(mean_metrics, orient='index',
                                         columns=["accuracy", "precision", "recall", "f1", "f2"])
     print(metrics_df.head(10))
+    print("\n Run Metrics: ")
+    print(run_metrics)
     metrics_df.to_csv("{}".format(f_name), index=True, header=True, index_label="project")

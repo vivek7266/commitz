@@ -181,12 +181,16 @@ def main():
 
 
 if __name__ == '__main__':
-    f_name = "hindle.csv"
+    f_name = "hindle-tmp.csv"
     final_mean_metrics = {}
     sum_metrics = {}
+    run_metrics = {}
     for i in range(20):
         metrics_map = main()
         for project_key, metrics in metrics_map.items():
+            if project_key not in run_metrics:
+                run_metrics[project_key] = []
+            run_metrics[project_key].append(metrics_map[project_key])
             if project_key not in sum_metrics:
                 sum_metrics[project_key] = np.asarray(metrics)
             else:
@@ -203,3 +207,5 @@ if __name__ == '__main__':
                                         columns=["accuracy", "precision", "recall", "f1", "f2"])
     metrics_df.to_csv("{}".format(f_name), index=True, header=True, index_label="project")
     print(metrics_df.head(10))
+    print("\n Run Metrics: ")
+    print(run_metrics)
